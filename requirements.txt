@@ -5,3 +5,4 @@ scikit-learn
 joblib
 matplotlib
 plotly
+gdown==5.2.0

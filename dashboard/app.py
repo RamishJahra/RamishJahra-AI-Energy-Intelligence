@@ -5,6 +5,7 @@ import numpy as np
 import joblib
 import pickle
 import matplotlib.pyplot as plt
+import gdown
 
 from pathlib import Path
 from datetime import datetime
@@ -20,9 +21,112 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-ROOT = Path("/content/drive/MyDrive/AI-Energy-Intelligence")
+
+# ============================================================
+# CLOUD CONFIGURATION AND GOOGLE DRIVE ASSET LOADER
+# ============================================================
+
+ROOT = Path("/tmp/AI-Energy-Intelligence")
 DATA_DIR = ROOT / "data"
 MODEL_DIR = ROOT / "models"
+
+MODEL_FOLDER_ID = "1LQUFd9PTrO1wns0hA6HTfCZbYpMvoGCj"
+DATA_FOLDER_ID = "1F-vAQnZn0xkvfMQbIkPG2iGSH5pFN_g5"
+
+REQUIRED_MODELS = [
+    "demand_forecasting_model.pkl",
+    "load_shedding_model.pkl",
+    "grid_isolation_forest.pkl",
+    "grid_lof_model.pkl",
+    "grid_scaler.pkl",
+    "load_shedding_imputer.pkl",
+    "solar_isolation_forest.pkl",
+    "solar_lof_model.pkl",
+    "solar_scaler.pkl",
+    "solar_imputer.pkl"
+]
+
+REQUIRED_DATASETS = [
+    "demand_data.pkl",
+    "load_shedding_data.pkl",
+    "grid_anomaly_data.pkl",
+    "solar_anomaly_data.pkl"
+]
+
+
+@st.cache_resource(show_spinner="Preparing Google Drive models and datasets...")
+def prepare_assets():
+
+    MODEL_DIR.mkdir(parents=True, exist_ok=True)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    folders = [
+        (
+            MODEL_FOLDER_ID,
+            MODEL_DIR,
+            REQUIRED_MODELS,
+            "Models"
+        ),
+        (
+            DATA_FOLDER_ID,
+            DATA_DIR,
+            REQUIRED_DATASETS,
+            "Datasets"
+        )
+    ]
+
+    for folder_id, target_dir, required_files, label in folders:
+
+        missing = [
+            filename
+            for filename in required_files
+            if not (target_dir / filename).exists()
+        ]
+
+        if missing:
+
+            st.write(f"Downloading {label} from Google Drive...")
+
+            url = f"https://drive.google.com/drive/folders/{folder_id}"
+
+            gdown.download_folder(
+                url=url,
+                output=str(target_dir),
+                quiet=False,
+                use_cookies=False,
+                remaining_ok=True
+            )
+
+        missing_after_download = [
+            filename
+            for filename in required_files
+            if not (target_dir / filename).exists()
+        ]
+
+        if missing_after_download:
+
+            raise FileNotFoundError(
+                f"{label} download incomplete. Missing files: "
+                + ", ".join(missing_after_download)
+            )
+
+    return True
+
+
+try:
+    prepare_assets()
+
+except Exception as e:
+
+    st.error(f"Google Drive asset loading failed: {e}")
+
+    st.info(
+        "Check that both Google Drive folders are accessible "
+        "to anyone with the link."
+    )
+
+    st.stop()
+
 
 # ============================================================
 # STYLE
